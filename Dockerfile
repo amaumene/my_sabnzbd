@@ -20,8 +20,6 @@ WORKDIR /app/unrar
 RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS=.*|CXXFLAGS=-mtune=cortex-a53 -march=armv8-a+crypto+crc -O2 -std=c++11 -Wno-logical-op-parentheses -Wno-switch -Wno-dangling-else|' makefile; fi
 RUN sed -i 's|CXX=.*|CXX=clang++|' makefile
 
-RUN sed -i 's|LDFLAGS=-pthread|LDFLAGS=-pthread -static|' makefile
-
 RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
 
 WORKDIR /app
@@ -31,10 +29,9 @@ RUN git clone https://github.com/animetosho/par2cmdline-turbo.git
 WORKDIR /app/par2cmdline-turbo
 
 RUN ./automake.sh && \
-    autoupdate && \
-    ./configure
+    autoupdate
 
-RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS =.*|CXXFLAGS = -O2 -mtune=cortex-a53 -march=armv8-a+crypto+crc|' Makefile; fi
+RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then CC=clang CXXFLAGS="-O2 -mtune=cortex-a53 -march=armv8-a+crypto+crc" CFLAGS="-O2 -mtune=cortex-a53 -march=armv8-a+crypto+crc" ./configure; else ./configure; fi
 
 RUN make
 
