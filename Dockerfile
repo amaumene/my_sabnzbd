@@ -34,7 +34,7 @@ RUN ./automake.sh && \
     autoupdate && \
     ./configure
 
-RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS = -g -O2|CXXFLAGS = -O2 -mtune=cortex-a53 -march=armv8-a+crypto+crc|' Makefile; fi
+RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS =.*|CXXFLAGS = -O2 -mtune=cortex-a53 -march=armv8-a+crypto+crc|' Makefile; fi
 
 RUN make
 
