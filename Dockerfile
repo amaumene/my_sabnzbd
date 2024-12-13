@@ -61,6 +61,8 @@ RUN cd /app/usr && \
 
 RUN cp -r /app/usr/local/lib/python3.$(echo $PYTHON_VERSION | cut -d '.' -f 2)/site-packages /app/usr/local/lib/python3/
 
+RUN mkdir /tmp/lib && cp /lib/ld-musl-* /tmp/lib
+
 FROM scratch
 
 #RUN apk add --no-cache python3
@@ -79,7 +81,7 @@ COPY --from=python /app/usr/local/lib/python3/ /app/usr/local/lib/python3/
 COPY --from=builder /app/unrar/unrar /app/usr/bin/unrar
 COPY --from=builder /app/par2cmdline-turbo/par2 /app/usr/bin/par2
 
-COPY --from=python /lib/ld-musl-aarch64.so.1 /lib/ld-musl-aarch64.so.1
+COPY --from=python /tmp/lib/ /lib/
 COPY --from=python /usr/lib/libssl.so.3 /usr/lib/libssl.so.3
 COPY --from=python /usr/lib/libcrypto.so.3 /usr/lib/libcrypto.so.3
 COPY --from=python /usr/lib/libz.so.1 /usr/lib/libz.so.1
