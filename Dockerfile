@@ -7,7 +7,8 @@ RUN apk add --no-cache \
     autoconf \
     automake \
     make \
-    linux-headers
+    linux-headers \
+    perl
 
 WORKDIR /app
 
@@ -15,7 +16,7 @@ RUN git clone https://github.com/aawc/unrar.git
 
 WORKDIR /app/unrar
 
-RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS=.*|CXXFLAGS=-mtune=cortex-a53 -march=armv8-a+crypto+crc -O2 -std=c++11 -Wno-logical-op-parentheses -Wno-switch -Wno-dangling-else|' makefile; fi
+RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS=.*|CXXFLAGS=-march=armv8-a+crypto+crc -O2 -std=c++11 -Wno-logical-op-parentheses -Wno-switch -Wno-dangling-else|' makefile; fi
 RUN sed -i 's|CXX=.*|CXX=clang++|' makefile
 
 RUN sed -i 's|LDFLAGS=-pthread|LDFLAGS=-pthread -static|' makefile
@@ -31,9 +32,45 @@ WORKDIR /app/par2cmdline-turbo
 RUN ./automake.sh && \
     autoupdate
 
-RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then CC=clang CXXFLAGS="-O2 -mtune=cortex-a53 -march=armv8-a+crypto+crc" CFLAGS="-O2 -mtune=cortex-a53 -march=armv8-a+crypto+crc" LDFLAGS="-static" ./configure; else ./configure; fi
+RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then CC=clang CXXFLAGS="-O2 -march=armv8-a+crypto+crc" CFLAGS="-O2 -march=armv8-a+crypto+crc" LDFLAGS="-static" ./configure; else ./configure; fi
 
 RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
+
+WORKDIR /app
+
+RUN wget -O - https://api.github.com/repos/openssl/openssl/releases/latest | grep 'tarball_url' | cut -d '"' -f 4 | xargs wget -O openssl.tar.gz
+
+RUN mkdir openssl
+
+RUN tar xvaf openssl.tar.gz -C openssl --strip-components=1
+
+WORKDIR /app/openssl
+
+RUN CC=clang CXXFLAGS="-O3 -march=armv8-a+crypto+crc" CFLAGS="-O3 -march=armv8-a+crypto+crc" ./Configure enable-ktls \
+                shared \
+                no-zlib \
+                no-async \
+                no-comp \
+                no-idea \
+                no-mdc2 \
+                no-rc5 \
+                no-ec2m \
+                no-ssl3 \
+                no-seed \
+                no-weak-ssl-ciphers \
+                enable-devcryptoeng
+
+RUN wget -O include/crypto/cryptodev.h https://raw.githubusercontent.com/cryptodev-linux/cryptodev-linux/refs/heads/master/crypto/cryptodev.h
+
+RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
+
+RUN make install
+
+RUN sed -e '/providers = provider_sect/a\' -e 'engines = engines_sect' -i /usr/local/ssl/openssl.cnf
+
+COPY ./devcrypto.cnf ./devcrypto.cnf
+
+RUN cat devcrypto.cnf >> /usr/local/ssl/openssl.cnf
 
 FROM python:alpine AS python
 
@@ -65,8 +102,6 @@ RUN mkdir /tmp/lib && cp /lib/ld-musl-* /tmp/lib
 
 FROM scratch
 
-#RUN apk add --no-cache python3
-
 WORKDIR /app/sabnzbd
 
 COPY --chown=65532 --from=python /app/sabnzbd/SABnzbd.py /app/sabnzbd/SABnzbd.py
@@ -78,17 +113,17 @@ COPY --from=python /usr/local/bin/python3 /
 COPY --from=python /usr/local/lib/ /usr/local/lib/
 COPY --from=python /app/usr/local/lib/python3/ /app/usr/local/lib/python3/
 
+COPY --from=python /tmp/lib/ /lib/
+
 COPY --from=builder /app/unrar/unrar /app/usr/bin/unrar
 COPY --from=builder /app/par2cmdline-turbo/par2 /app/usr/bin/par2
+COPY --from=builder /usr/local/lib /usr/local/lib
+COPY --from=builder /usr/local/ssl /usr/local/ssl
 
-COPY --from=python /tmp/lib/ /lib/
-COPY --from=python /usr/lib/libssl.so.3 /usr/lib/libssl.so.3
-COPY --from=python /usr/lib/libcrypto.so.3 /usr/lib/libcrypto.so.3
 COPY --from=python /usr/lib/libz.so.1 /usr/lib/libz.so.1
 COPY --from=python /usr/lib/libffi.so.8 /usr/lib/libffi.so.8
 COPY --from=python /usr/lib/libbz2.so.1 /usr/lib/libbz2.so.1
 COPY --from=python /usr/lib/libsqlite3.so.0 /usr/lib/libsqlite3.so.0
-
 
 VOLUME /config
 
