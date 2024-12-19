@@ -46,7 +46,9 @@ RUN tar xvaf openssl.tar.gz -C openssl --strip-components=1
 
 WORKDIR /app/openssl
 
-RUN CC=clang CXXFLAGS="-O3 -march=armv8-a+crypto+crc" CFLAGS="-O3 -march=armv8-a+crypto+crc" ./Configure enable-ktls \
+RUN if [ $(lscpu | grep -c aarch64) -gt 0 ];\
+    then CC=clang CXXFLAGS="-O3 -march=armv8-a+crypto+crc" CFLAGS="-O3 -march=armv8-a+crypto+crc" \
+      ./Configure enable-ktls \
                 shared \
                 no-zlib \
                 no-async \
@@ -58,7 +60,20 @@ RUN CC=clang CXXFLAGS="-O3 -march=armv8-a+crypto+crc" CFLAGS="-O3 -march=armv8-a
                 no-ssl3 \
                 no-seed \
                 no-weak-ssl-ciphers \
-                enable-devcryptoeng
+                enable-devcryptoeng; \
+    else ./Configure enable-ktls \
+                shared \
+                no-zlib \
+                no-async \
+                no-comp \
+                no-idea \
+                no-mdc2 \
+                no-rc5 \
+                no-ec2m \
+                no-ssl3 \
+                no-seed \
+                no-weak-ssl-ciphers \
+                enable-devcryptoeng; fi
 
 RUN wget -O include/crypto/cryptodev.h https://raw.githubusercontent.com/cryptodev-linux/cryptodev-linux/refs/heads/master/crypto/cryptodev.h
 
