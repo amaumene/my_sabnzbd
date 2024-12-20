@@ -42,7 +42,7 @@ RUN wget -O - https://api.github.com/repos/openssl/openssl/releases/latest | gre
 
 RUN mkdir openssl
 
-RUN tar xvaf openssl.tar.gz -C openssl --strip-components=1
+RUN tar xaf openssl.tar.gz -C openssl --strip-components=1
 
 WORKDIR /app/openssl
 
@@ -95,7 +95,7 @@ RUN wget -O - https://api.github.com/repos/sabnzbd/sabnzbd/releases/latest | gre
 
 RUN mkdir sabnzbd
 
-RUN tar xvaf sabnzbd.tar.gz -C sabnzbd --strip-components=1
+RUN tar xaf sabnzbd.tar.gz -C sabnzbd --strip-components=1
 
 RUN pip install sabctools CT3 feedparser configobj cherrypy cheroot portend cryptography chardet guessit puremagic PySocks apprise --root /app/
 
