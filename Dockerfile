@@ -149,4 +149,4 @@ EXPOSE 8080/tcp
 ENV PATH=/app/usr/bin/:$PATH
 ENV PYTHONPATH=/usr/local/lib/python3/:/app/usr/local/lib/python3/
 
-CMD [ "/python3", "SABnzbd.py", "-f", "/config/sabnzbd.ini" ]
+CMD [ "/python3", "SABnzbd.py", "--ipv6_hosting", "1", "-s", "[::]:8080", "-f", "/config/sabnzbd.ini" ]
